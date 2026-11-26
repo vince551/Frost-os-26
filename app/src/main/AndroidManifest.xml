@@ -11,6 +11,7 @@
     <application
         android:allowBackup="false"
         android:label="FROST OS 26"
+        android:icon="@drawable/frost_icon"
         android:theme="@style/AppTheme"
         android:usesCleartextTraffic="false">
 
