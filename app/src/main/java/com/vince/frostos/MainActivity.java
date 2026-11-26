@@ -207,7 +207,8 @@ public class MainActivity extends Activity {
         LinearLayout quick = new LinearLayout(this);
         quick.setGravity(Gravity.CENTER);
         quick.addView(button("Widgets", this::showWidgets), new LinearLayout.LayoutParams(0, 48, 1f));
-        quick.addView(button("App Switcher", this::showAppSwitcher), new LinearLayout.LayoutParams(0, 48, 1f));
+        quick.addView(button("Notifications", this::showNotificationCentre), new LinearLayout.LayoutParams(0, 48, 1f));
+        quick.addView(button("Switcher", this::showAppSwitcher), new LinearLayout.LayoutParams(0, 48, 1f));
         LinearLayout.LayoutParams qp = new LinearLayout.LayoutParams(-1, -2);
         qp.topMargin = 8;
         root.addView(quick, qp);
@@ -358,6 +359,8 @@ public class MainActivity extends Activity {
         date.setId(2002);
         date.setGravity(Gravity.CENTER);
         root.addView(date);
+
+        addRecentNotificationCards(root, 3);
 
         TextView status = text("FROST OS 26  •  YOUR DAY, AT A GLANCE", 11, 0xFF9FC8F2, true);
         status.setGravity(Gravity.CENTER);
@@ -637,6 +640,42 @@ public class MainActivity extends Activity {
     private boolean containsAny(String value, String... terms) {
         for (String term : terms) if (value.contains(term)) return true;
         return false;
+    }
+
+    private void addRecentNotificationCards(LinearLayout target, int limit) {
+        try {
+            org.json.JSONArray items = new org.json.JSONArray(
+                getSharedPreferences("frost_notifications", MODE_PRIVATE).getString("history", "[]"));
+            int count = Math.min(limit, items.length());
+            for (int i = 0; i < count; i++) {
+                org.json.JSONObject item = items.getJSONObject(i);
+                LinearLayout card = new LinearLayout(this);
+                card.setOrientation(LinearLayout.VERTICAL);
+                card.setPadding(14, 10, 14, 10);
+                card.setBackground(glassSurface(0x667DBEFF, 20));
+                TextView title = text(item.optString("title", "Notification"), 13, white, true);
+                TextView body = text(item.optString("body", ""), 11, 0xFFD8E8FA, false);
+                body.setMaxLines(2);
+                card.addView(title);
+                card.addView(body);
+                LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(-1, -2);
+                p.topMargin = 6;
+                target.addView(card, p);
+            }
+        } catch (Exception ignored) {}
+    }
+
+    private void showNotificationCentre() {
+        base("NOTIFICATION CENTRE");
+        root.addView(text("Your notifications", 27, white, true));
+        addRecentNotificationCards(root, 12);
+        root.addView(button("Clear notification history", () -> {
+            getSharedPreferences("frost_notifications", MODE_PRIVATE).edit().clear().apply();
+            showNotificationCentre();
+        }));
+        root.addView(button("Notification settings", () ->
+            openSettings(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)));
+        root.addView(button("BACK TO HOME", this::showHome));
     }
 
     private void showWidgets() {
