@@ -421,19 +421,33 @@ public class MainActivity extends Activity {
     private void showControlCentre() {
         base("CONTROL CENTRE");
         root.addView(text("Quick access", 28, white, true));
+        LinearLayout outer = root;
+        ScrollView scroll = new ScrollView(this);
+        LinearLayout panel = new LinearLayout(this);
+        panel.setOrientation(LinearLayout.VERTICAL);
+        panel.setPadding(0, 8, 0, 12);
+        scroll.setFillViewport(true);
+        scroll.addView(panel);
+        outer.addView(scroll, new LinearLayout.LayoutParams(-1, 0, 1f));
+        root = panel;
+
         addVolumeControl();
         addBrightnessControl();
+        root.addView(text("CONNECTIVITY", 11, blue, true));
         root.addView(button("Wi-Fi settings", () -> openSettings(Settings.ACTION_WIFI_SETTINGS)));
         root.addView(button("Bluetooth settings", () -> openSettings(Settings.ACTION_BLUETOOTH_SETTINGS)));
+        root.addView(button("Airplane mode settings", () -> openSettings(Settings.ACTION_AIRPLANE_MODE_SETTINGS)));
+        root.addView(text("DISPLAY & SOUND", 11, blue, true));
         root.addView(button("Display & brightness", () -> openSettings(Settings.ACTION_DISPLAY_SETTINGS)));
         root.addView(button("Sound & volume", () -> openSettings(Settings.ACTION_SOUND_SETTINGS)));
-        root.addView(button("Airplane mode settings", () -> openSettings(Settings.ACTION_AIRPLANE_MODE_SETTINGS)));
+        root.addView(text("FROST SERVICES", 11, blue, true));
         root.addView(button("Enable Dynamic Island overlay", this::requestIslandOverlay));
         root.addView(button("Enable notification access", () -> openSettings(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)));
         root.addView(text("Dynamic Island overlay: " + (Settings.canDrawOverlays(this) ? "Enabled" : "Permission needed"), 12, blue, false));
         root.addView(button("FROST Settings", this::showFrostSettings));
         root.addView(button("All Android settings", () -> openSettings(Settings.ACTION_SETTINGS)));
         root.addView(button("BACK TO FROST HOME", this::showHome));
+        root = outer;
     }
 
     private void addVolumeControl() {
