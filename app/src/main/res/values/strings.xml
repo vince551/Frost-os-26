@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">FROST OS 26</string>
+    <string name="notification_listener_description">FROST OS displays notification previews in the Dynamic Island.</string>
+</resources>
