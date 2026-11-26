@@ -25,6 +25,7 @@ import android.text.Editable;
 import android.text.TextWatcher;
 import android.widget.GridLayout;
 import android.widget.LinearLayout;
+import android.widget.ImageView;
 import android.widget.ScrollView;
 import android.widget.SeekBar;
 import android.widget.TextView;
@@ -207,6 +208,25 @@ public class MainActivity extends Activity {
         name.setGravity(Gravity.CENTER);
         LinearLayout.LayoutParams np = new LinearLayout.LayoutParams(-1, -2);
         np.topMargin = 6;
+        tile.addView(name, np);
+        tile.setOnClickListener(v -> action.run());
+        return tile;
+    }
+
+    private View appTileWithIcon(Drawable drawable, String label, Runnable action) {
+        LinearLayout tile = new LinearLayout(this);
+        tile.setOrientation(LinearLayout.VERTICAL);
+        tile.setGravity(Gravity.CENTER);
+        tile.setPadding(4, 9, 4, 9);
+        ImageView icon = new ImageView(this);
+        icon.setImageDrawable(drawable);
+        icon.setScaleType(ImageView.ScaleType.FIT_CENTER);
+        tile.addView(icon, new LinearLayout.LayoutParams(54, 54));
+        TextView name = text(label, 10, white, true);
+        name.setGravity(Gravity.CENTER);
+        name.setMaxLines(2);
+        LinearLayout.LayoutParams np = new LinearLayout.LayoutParams(-1, 36);
+        np.topMargin = 5;
         tile.addView(name, np);
         tile.setOnClickListener(v -> action.run());
         return tile;
@@ -534,7 +554,7 @@ public class MainActivity extends Activity {
             String label = String.valueOf(info.loadLabel(pm));
             if (!label.toLowerCase(Locale.ROOT).contains(needle)) continue;
             String pkg = info.activityInfo.packageName;
-            View tile = appTile("◉", label, () -> launchPackage(pkg));
+            View tile = appTileWithIcon(info.loadIcon(pm), label, () -> launchPackage(pkg));
             GridLayout.LayoutParams p = new GridLayout.LayoutParams();
             p.width = 0;
             p.height = -2;
