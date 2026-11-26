@@ -109,7 +109,7 @@ public class MainActivity extends Activity {
         b.setTextColor(white);
         b.setAllCaps(false);
         b.setTextSize(14);
-        b.setBackground(gradient(0x557DBEFF));
+        b.setBackground(glassSurface(0x667DBEFF, 24));
         b.setOnClickListener(v -> action.run());
         return b;
     }
@@ -193,10 +193,10 @@ public class MainActivity extends Activity {
         dock.setPadding(6, 8, 6, 8);
         dock.setBackground(glassSurface(0x887DBEFF, 30));
         dock.setElevation(12f);
-        dock.addView(dockItem("Apps", "▦", this::showDrawer));
-        dock.addView(dockItem("Controls", "☷", this::showControlCentre));
-        dock.addView(dockItem("Wallpaper", "◈", this::chooseWallpaper));
-        dock.addView(dockItem("Lock", "⌑", this::showLockScreen));
+        dock.addView(dockItem("Phone", "☎", () -> launchShortcut("phone")));
+        dock.addView(dockItem("Browser", "◎", () -> launchShortcut("browser")));
+        dock.addView(dockItem("Messages", "✉", () -> launchShortcut("sms")));
+        dock.addView(dockItem("Camera", "◉", () -> launchShortcut("camera")));
         LinearLayout.LayoutParams dp = new LinearLayout.LayoutParams(-1, -2);
         dp.topMargin = 18;
         root.addView(dock, dp);
