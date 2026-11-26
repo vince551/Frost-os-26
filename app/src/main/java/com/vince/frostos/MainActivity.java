@@ -681,19 +681,66 @@ public class MainActivity extends Activity {
             int count = Math.min(limit, items.length());
             for (int i = 0; i < count; i++) {
                 org.json.JSONObject item = items.getJSONObject(i);
+                final String packageName = item.optString("package", "");
                 LinearLayout card = new LinearLayout(this);
                 card.setOrientation(LinearLayout.VERTICAL);
                 card.setPadding(14, 10, 14, 10);
                 card.setBackground(glassSurface(0x667DBEFF, 20));
                 TextView title = text(item.optString("title", "Notification"), 13, white, true);
                 TextView body = text(item.optString("body", ""), 11, 0xFFD8E8FA, false);
-                body.setMaxLines(2);
+                body.setMaxLines(3);
                 card.addView(title);
                 card.addView(body);
+                TextView source = text(packageName, 10, blue, false);
+                card.addView(source);
+                card.setOnClickListener(v -> openNotificationApp(packageName));
+                LinearLayout actions = new LinearLayout(this);
+                actions.setGravity(Gravity.END);
+                actions.addView(button("OPEN APP", () -> openNotificationApp(packageName)));
+                actions.addView(button("DISMISS", () -> removeNotificationAt(item.optLong("time", -1L), packageName, item.optString("title", ""))));
+                card.addView(actions);
                 LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(-1, -2);
-                p.topMargin = 6;
+                p.topMargin = 7;
                 target.addView(card, p);
             }
+            if (items.length() == 0) {
+                target.addView(text("You're all caught up. New notifications will appear here.", 13, 0xFFD8E8FA, false));
+            }
+        } catch (Exception ignored) {}
+    }
+
+    private void openNotificationApp(String packageName) {
+        if (packageName == null || packageName.isEmpty()) return;
+        try {
+            Intent launch = getPackageManager().getLaunchIntentForPackage(packageName);
+            if (launch != null) {
+                launch.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                startActivity(launch);
+            } else {
+                Toast.makeText(this, "This app cannot be opened directly.", Toast.LENGTH_SHORT).show();
+            }
+        } catch (Exception e) {
+            Toast.makeText(this, "Unable to open this app.", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void removeNotificationAt(long timestamp, String packageName, String title) {
+        try {
+            org.json.JSONArray oldItems = new org.json.JSONArray(
+                getSharedPreferences("frost_notifications", MODE_PRIVATE).getString("history", "[]"));
+            org.json.JSONArray updated = new org.json.JSONArray();
+            boolean removed = false;
+            for (int i = 0; i < oldItems.length(); i++) {
+                org.json.JSONObject item = oldItems.getJSONObject(i);
+                boolean match = !removed && item.optLong("time", -2L) == timestamp
+                    && item.optString("package", "").equals(packageName)
+                    && item.optString("title", "").equals(title);
+                if (match) removed = true;
+                else updated.put(item);
+            }
+            getSharedPreferences("frost_notifications", MODE_PRIVATE).edit()
+                .putString("history", updated.toString()).apply();
+            showNotificationCentre();
         } catch (Exception ignored) {}
     }
 
