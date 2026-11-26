@@ -39,6 +39,7 @@ public class MainActivity extends Activity {
     private LinearLayout root;
     private float downX, downY;
     private boolean lockPreview = false;
+    private String currentScreen = "home";
     private boolean torchOn = false;
     private String torchCameraId;
     private static final int PICK_WALLPAPER = 77;
@@ -104,6 +105,7 @@ public class MainActivity extends Activity {
     }
 
     private void base(String subtitle) {
+        currentScreen = subtitle;
         root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
         root.setPadding(22, 38, 22, 18);
@@ -387,7 +389,7 @@ public class MainActivity extends Activity {
                     showHome();
                     return true;
                 }
-                if (!lockPreview) {
+                if (!lockPreview && "INTELLIGENCE IN EVERY INTERACTION".equals(currentScreen)) {
                     if (dy < 0) showDrawer(); else showControlCentre();
                     return true;
                 }
@@ -480,6 +482,7 @@ public class MainActivity extends Activity {
         root.addView(text("System permissions", 14, blue, true));
         root.addView(button("Dynamic Island overlay permission", this::requestIslandOverlay));
         root.addView(button("Notification access", () -> openSettings(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)));
+        root.addView(button("Choose home wallpaper", this::chooseWallpaper));
         root.addView(button("Android home app settings", () -> openSettings(Settings.ACTION_HOME_SETTINGS)));
         root.addView(text("Android keeps secure unlock, protected quick settings and system notifications under its own control.", 13, 0xFFD8E8FA, false));
         root.addView(button("BACK TO HOME", this::showHome));
