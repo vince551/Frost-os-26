@@ -47,7 +47,7 @@ public class MainActivity extends Activity {
     private String wallpaperUri;
     private String activeCategory = "";
     private final int bg = Color.rgb(7, 19, 38);
-    private final int blue = Color.rgb(113, 194, 255);
+    private int blue = Color.rgb(113, 194, 255);
     private final int white = Color.WHITE;
 
     private final Runnable clockTick = new Runnable() {
@@ -65,7 +65,7 @@ public class MainActivity extends Activity {
         getWindow().setNavigationBarColor(bg);
         getWindow().getDecorView().setSystemUiVisibility(
             View.SYSTEM_UI_FLAG_LAYOUT_STABLE | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN);
-        wallpaperUri = getPreferences(MODE_PRIVATE).getString("wallpaper_uri", null);
+        wallpaperUri = getPreferences(MODE_PRIVATE).getString("wallpaper_uri", null);\n        blue = getPreferences(MODE_PRIVATE).getInt("accent_color", Color.rgb(113, 194, 255));
         showHome();
         handler.post(clockTick);
     }
@@ -561,15 +561,44 @@ public class MainActivity extends Activity {
     private void showFrostSettings() {
         base("PERSONALISE YOUR EXPERIENCE");
         root.addView(text("FROST Settings", 28, white, true));
-        root.addView(text("System permissions", 14, blue, true));
-        root.addView(button("Dynamic Island overlay permission", this::requestIslandOverlay));
-        root.addView(button("Notification access", () -> openSettings(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)));
+        root.addView(text("APPEARANCE", 12, blue, true));
+        root.addView(text("Accent colour", 14, 0xFFD8E8FA, false));
+        LinearLayout accents = new LinearLayout(this);
+        accents.setGravity(Gravity.CENTER);
+        accents.addView(button("Ice blue", () -> setAccent(Color.rgb(113, 194, 255))), new LinearLayout.LayoutParams(0, 48, 1f));
+        accents.addView(button("Aurora teal", () -> setAccent(Color.rgb(75, 220, 205))), new LinearLayout.LayoutParams(0, 48, 1f));
+        accents.addView(button("Rose", () -> setAccent(Color.rgb(255, 135, 175))), new LinearLayout.LayoutParams(0, 48, 1f));
+        root.addView(accents);
+        root.addView(button("Restore default accent", () -> setAccent(Color.rgb(113, 194, 255))));
+        root.addView(text("SETUP & PERMISSIONS", 12, blue, true));
+        root.addView(text("Overlay: " + (Settings.canDrawOverlays(this) ? "Ready" : "Not enabled"), 13, 0xFFD8E8FA, false));
+        root.addView(button("1. Enable Dynamic Island overlay", this::requestIslandOverlay));
+        root.addView(text("Notification access: " + (isNotificationAccessEnabled() ? "Ready" : "Not enabled"), 13, 0xFFD8E8FA, false));
+        root.addView(button("2. Enable notification access", () -> openSettings(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)));
+        boolean writeAllowed = Settings.System.canWrite(this);
+        root.addView(text("Brightness control: " + (writeAllowed ? "Ready" : "Not enabled"), 13, 0xFFD8E8FA, false));
+        root.addView(button("3. Allow brightness control", () -> {
+            try { startActivity(new Intent(Settings.ACTION_MANAGE_WRITE_SETTINGS, Uri.parse("package:" + getPackageName()))); }
+            catch (Exception e) { openSettings(Settings.ACTION_DISPLAY_SETTINGS); }
+        }));
+        root.addView(button("4. Set FROST as default home app", () -> openSettings(Settings.ACTION_HOME_SETTINGS)));
+        root.addView(text("PERSONALISATION", 12, blue, true));
         root.addView(button("Choose home wallpaper", this::chooseWallpaper));
         root.addView(button("Open Control Centre", this::showControlCentre));
         root.addView(button("Open App Library", this::showDrawer));
-        root.addView(button("Android home app settings", () -> openSettings(Settings.ACTION_HOME_SETTINGS)));
-        root.addView(text("Android keeps secure unlock, protected quick settings and system notifications under its own control.", 13, 0xFFD8E8FA, false));
+        root.addView(text("Android retains control of secure unlock, protected quick settings and the system notification shade. FROST provides its own launcher experience and companion surfaces.", 12, 0xFFD8E8FA, false));
         root.addView(button("BACK TO HOME", this::showHome));
+    }
+
+    private void setAccent(int color) {
+        blue = color;
+        getPreferences(MODE_PRIVATE).edit().putInt("accent_color", color).apply();
+        showFrostSettings();
+    }
+
+    private boolean isNotificationAccessEnabled() {
+        String enabled = Settings.Secure.getString(getContentResolver(), "enabled_notification_listeners");
+        return enabled != null && enabled.contains(getPackageName());
     }
 
     private void openSettings(String action) {
