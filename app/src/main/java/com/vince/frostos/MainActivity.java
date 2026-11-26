@@ -5,6 +5,9 @@ import android.app.Activity;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
+import android.graphics.BitmapFactory;
+import android.graphics.drawable.BitmapDrawable;
+import android.graphics.drawable.Drawable;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
 import android.hardware.camera2.CameraManager;
@@ -17,6 +20,9 @@ import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.View;
 import android.widget.Button;
+import android.widget.EditText;
+import android.text.Editable;
+import android.text.TextWatcher;
 import android.widget.GridLayout;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
@@ -35,6 +41,8 @@ public class MainActivity extends Activity {
     private boolean lockPreview = false;
     private boolean torchOn = false;
     private String torchCameraId;
+    private static final int PICK_WALLPAPER = 77;
+    private String wallpaperUri;
     private final int bg = Color.rgb(7, 19, 38);
     private final int blue = Color.rgb(113, 194, 255);
     private final int white = Color.WHITE;
@@ -53,6 +61,7 @@ public class MainActivity extends Activity {
         getWindow().setNavigationBarColor(bg);
         getWindow().getDecorView().setSystemUiVisibility(
             View.SYSTEM_UI_FLAG_LAYOUT_STABLE | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN);
+        wallpaperUri = getPreferences(MODE_PRIVATE).getString("wallpaper_uri", null);
         showHome();
         handler.post(clockTick);
     }
@@ -109,44 +118,159 @@ public class MainActivity extends Activity {
     private void showHome() {
         lockPreview = false;
         base("INTELLIGENCE IN EVERY INTERACTION");
-        TextView clock = text("", 62, white, false);
+        applySavedWallpaper();
+        root.setPadding(18, 34, 18, 16);
+
+        LinearLayout top = new LinearLayout(this);
+        top.setGravity(Gravity.CENTER_VERTICAL);
+        TextView brand = text("FROST", 19, white, true);
+        top.addView(brand, new LinearLayout.LayoutParams(0, -2, 1f));
+        top.addView(button("⚙", this::showFrostSettings));
+        root.addView(top);
+
+        LinearLayout widget = new LinearLayout(this);
+        widget.setOrientation(LinearLayout.VERTICAL);
+        widget.setPadding(20, 20, 20, 20);
+        widget.setGravity(Gravity.CENTER);
+        widget.setBackground(gradient(0x887DBEFF));
+        TextView clock = text("", 58, white, false);
         clock.setId(1001);
         clock.setGravity(Gravity.CENTER);
-        TextView date = text("", 16, 0xFFD8E8FA, false);
+        TextView date = text("", 15, 0xFFE0EEFF, false);
         date.setId(1002);
         date.setGravity(Gravity.CENTER);
-        LinearLayout.LayoutParams wide = new LinearLayout.LayoutParams(-1, -2);
-        wide.topMargin = 34;
-        root.addView(clock, wide);
-        root.addView(date);
+        widget.addView(clock);
+        widget.addView(date);
+        LinearLayout.LayoutParams wp = new LinearLayout.LayoutParams(-1, -2);
+        wp.topMargin = 18;
+        root.addView(widget, wp);
 
-        TextView hint = text("Swipe up for apps  •  Swipe down for controls", 12, 0xFFB7CDE6, false);
-        hint.setGravity(Gravity.CENTER);
-        LinearLayout.LayoutParams hp = new LinearLayout.LayoutParams(-1, -2);
-        hp.topMargin = 22;
-        root.addView(hint, hp);
+        TextView section = text("FAVOURITES", 11, blue, true);
+        LinearLayout.LayoutParams sh = new LinearLayout.LayoutParams(-1, -2);
+        sh.topMargin = 22;
+        root.addView(section, sh);
 
         GridLayout grid = new GridLayout(this);
-        grid.setColumnCount(2);
+        grid.setColumnCount(3);
         String[] labels = {"Phone", "Messages", "Camera", "Photos", "Settings", "Calendar"};
+        String[] glyphs = {"☎", "✉", "◉", "▧", "⚙", "▦"};
         String[] actions = {"phone", "sms", "camera", "photos", "settings", "calendar"};
         for (int i = 0; i < labels.length; i++) {
             final String action = actions[i];
-            Button tile = button(labels[i], () -> launchShortcut(action));
-            GridLayout.LayoutParams p = new GridLayout.LayoutParams();
-            p.width = 0;
-            p.height = 92;
-            p.columnSpec = GridLayout.spec(GridLayout.UNDEFINED, 1f);
-            p.setMargins(6, 6, 6, 6);
-            grid.addView(tile, p);
+            grid.addView(appTile(glyphs[i], labels[i], () -> launchShortcut(action)),
+                new GridLayout.LayoutParams());
         }
-        LinearLayout.LayoutParams gp = new LinearLayout.LayoutParams(-1, 0, 1f);
-        gp.topMargin = 18;
+        LinearLayout.LayoutParams gp = new LinearLayout.LayoutParams(-1, -2);
+        gp.topMargin = 8;
         root.addView(grid, gp);
-        root.addView(button("APP LIBRARY", this::showDrawer));
-        root.addView(button("CONTROL CENTRE", this::showControlCentre));
-        root.addView(button("FROST SETTINGS", this::showFrostSettings));
-        root.addView(button("PREVIEW LOCK SCREEN", this::showLockScreen));
+
+        TextView hint = text("Swipe up for your apps  •  Swipe down for controls", 11, 0xFFB7CDE6, false);
+        hint.setGravity(Gravity.CENTER);
+        LinearLayout.LayoutParams hp = new LinearLayout.LayoutParams(-1, -2);
+        hp.topMargin = 10;
+        root.addView(hint, hp);
+
+        LinearLayout dock = new LinearLayout(this);
+        dock.setGravity(Gravity.CENTER);
+        dock.setPadding(6, 8, 6, 8);
+        dock.setBackground(gradient(0x667DBEFF));
+        dock.addView(dockItem("Apps", "▦", this::showDrawer));
+        dock.addView(dockItem("Controls", "☷", this::showControlCentre));
+        dock.addView(dockItem("Wallpaper", "◈", this::chooseWallpaper));
+        dock.addView(dockItem("Lock", "⌑", this::showLockScreen));
+        LinearLayout.LayoutParams dp = new LinearLayout.LayoutParams(-1, -2);
+        dp.topMargin = 18;
+        root.addView(dock, dp);
+    }
+
+    private View appTile(String glyph, String label, Runnable action) {
+        LinearLayout tile = new LinearLayout(this);
+        tile.setOrientation(LinearLayout.VERTICAL);
+        tile.setGravity(Gravity.CENTER);
+        tile.setPadding(4, 10, 4, 10);
+        TextView icon = text(glyph, 27, white, true);
+        icon.setGravity(Gravity.CENTER);
+        GradientDrawable iconBg = new GradientDrawable(GradientDrawable.Orientation.TL_BR,
+            new int[]{0xFF27649B, 0xFF102D50});
+        iconBg.setCornerRadius(22);
+        iconBg.setStroke(1, 0x667DBEFF);
+        icon.setBackground(iconBg);
+        tile.addView(icon, new LinearLayout.LayoutParams(62, 62));
+        TextView name = text(label, 11, white, true);
+        name.setGravity(Gravity.CENTER);
+        LinearLayout.LayoutParams np = new LinearLayout.LayoutParams(-1, -2);
+        np.topMargin = 6;
+        tile.addView(name, np);
+        tile.setOnClickListener(v -> action.run());
+        GridLayout.LayoutParams gp = new GridLayout.LayoutParams();
+        gp.width = 0;
+        gp.height = -2;
+        gp.columnSpec = GridLayout.spec(GridLayout.UNDEFINED, 1f);
+        gp.setMargins(2, 2, 2, 2);
+        tile.setLayoutParams(gp);
+        return tile;
+    }
+
+    private View dockItem(String label, String glyph, Runnable action) {
+        LinearLayout item = new LinearLayout(this);
+        item.setOrientation(LinearLayout.VERTICAL);
+        item.setGravity(Gravity.CENTER);
+        TextView icon = text(glyph, 22, white, true);
+        icon.setGravity(Gravity.CENTER);
+        item.addView(icon);
+        TextView caption = text(label, 10, 0xFFD8E8FA, false);
+        caption.setGravity(Gravity.CENTER);
+        item.addView(caption);
+        item.setOnClickListener(v -> action.run());
+        item.setLayoutParams(new LinearLayout.LayoutParams(0, -2, 1f));
+        return item;
+    }
+
+    private void chooseWallpaper() {
+        Intent pick = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+        pick.addCategory(Intent.CATEGORY_OPENABLE);
+        pick.setType("image/*");
+        startActivityForResult(pick, PICK_WALLPAPER);
+    }
+
+    @Override protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == PICK_WALLPAPER && resultCode == RESULT_OK && data != null && data.getData() != null) {
+            Uri uri = data.getData();
+            try {
+                getContentResolver().takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION);
+                wallpaperUri = uri.toString();
+                getPreferences(MODE_PRIVATE).edit().putString("wallpaper_uri", wallpaperUri).apply();
+                showHome();
+            } catch (Exception e) {
+                showMessage("That wallpaper could not be saved. Please choose another image.");
+            }
+        }
+    }
+
+    private void applySavedWallpaper() {
+        if (wallpaperUri == null) return;
+        try {
+            Uri uri = Uri.parse(wallpaperUri);
+            android.graphics.BitmapFactory.Options bounds = new android.graphics.BitmapFactory.Options();
+            bounds.inJustDecodeBounds = true;
+            try (java.io.InputStream in = getContentResolver().openInputStream(uri)) {
+                BitmapFactory.decodeStream(in, null, bounds);
+            }
+            int sample = 1;
+            while (bounds.outWidth / sample > 1200 || bounds.outHeight / sample > 2000) sample *= 2;
+            android.graphics.BitmapFactory.Options opts = new android.graphics.BitmapFactory.Options();
+            opts.inSampleSize = sample;
+            android.graphics.Bitmap bitmap;
+            try (java.io.InputStream in = getContentResolver().openInputStream(uri)) {
+                bitmap = BitmapFactory.decodeStream(in, null, opts);
+            }
+            if (bitmap != null) {
+                Drawable image = new BitmapDrawable(getResources(), bitmap);
+                image.setAlpha(150);
+                root.setBackground(image);
+            }
+        } catch (Exception ignored) {}
     }
 
     private void showLockScreen() {
