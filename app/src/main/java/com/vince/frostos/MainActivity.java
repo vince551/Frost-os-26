@@ -170,7 +170,7 @@ public class MainActivity extends Activity {
         String[] actions = {"phone", "sms", "camera", "photos", "settings", "calendar"};
         for (int i = 0; i < labels.length; i++) {
             final String action = actions[i];
-            View tile = appTile(glyphs[i], labels[i], () -> launchShortcut(action));
+            View tile = appTileForShortcut(glyphs[i], labels[i], action);
             GridLayout.LayoutParams tileParams = new GridLayout.LayoutParams();
             tileParams.width = 0;
             tileParams.height = -2;
@@ -223,6 +223,25 @@ public class MainActivity extends Activity {
         tile.addView(name, np);
         tile.setOnClickListener(v -> action.run());
         return tile;
+    }
+
+    private View appTileForShortcut(String glyph, String label, String action) {
+        Intent intent = null;
+        if ("phone".equals(action)) intent = new Intent(Intent.ACTION_DIAL);
+        else if ("sms".equals(action)) intent = new Intent(Intent.ACTION_SENDTO, Uri.parse("smsto:"));
+        else if ("camera".equals(action)) intent = new Intent("android.media.action.IMAGE_CAPTURE");
+        else if ("settings".equals(action)) intent = new Intent(Settings.ACTION_SETTINGS);
+        else if ("calendar".equals(action)) intent = new Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_APP_CALENDAR);
+        else if ("photos".equals(action)) intent = new Intent(Intent.ACTION_GET_CONTENT).setType("image/*");
+        Drawable appIcon = null;
+        if (intent != null) {
+            try {
+                android.content.pm.ResolveInfo resolved = getPackageManager().resolveActivity(intent, 0);
+                if (resolved != null) appIcon = resolved.loadIcon(getPackageManager());
+            } catch (Exception ignored) {}
+        }
+        if (appIcon == null) return appTile(glyph, label, () -> launchShortcut(action));
+        return appTileWithIcon(appIcon, label, () -> launchShortcut(action));
     }
 
     private View appTileWithIcon(Drawable drawable, String label, Runnable action) {
