@@ -85,6 +85,15 @@ public class MainActivity extends Activity {
         return d;
     }
 
+    private GradientDrawable glassSurface(int stroke, int radius) {
+        GradientDrawable d = new GradientDrawable(
+            GradientDrawable.Orientation.TL_BR,
+            new int[]{0xDD173B60, 0xCC0B1D35, 0xDD061326});
+        d.setCornerRadius(radius);
+        d.setStroke(1, stroke);
+        return d;
+    }
+
     private TextView text(String value, int size, int color, boolean bold) {
         TextView t = new TextView(this);
         t.setText(value);
@@ -135,7 +144,8 @@ public class MainActivity extends Activity {
         widget.setOrientation(LinearLayout.VERTICAL);
         widget.setPadding(20, 20, 20, 20);
         widget.setGravity(Gravity.CENTER);
-        widget.setBackground(gradient(0x887DBEFF));
+        widget.setBackground(glassSurface(0x997DBEFF, 34));
+        widget.setElevation(10f);
         TextView clock = text("", 58, white, false);
         clock.setId(1001);
         clock.setGravity(Gravity.CENTER);
@@ -154,7 +164,7 @@ public class MainActivity extends Activity {
         root.addView(section, sh);
 
         GridLayout grid = new GridLayout(this);
-        grid.setColumnCount(3);
+        grid.setColumnCount(4);
         String[] labels = {"Phone", "Messages", "Camera", "Photos", "Settings", "Calendar"};
         String[] glyphs = {"☎", "✉", "◉", "▧", "⚙", "▦"};
         String[] actions = {"phone", "sms", "camera", "photos", "settings", "calendar"};
@@ -181,7 +191,8 @@ public class MainActivity extends Activity {
         LinearLayout dock = new LinearLayout(this);
         dock.setGravity(Gravity.CENTER);
         dock.setPadding(6, 8, 6, 8);
-        dock.setBackground(gradient(0x667DBEFF));
+        dock.setBackground(glassSurface(0x887DBEFF, 30));
+        dock.setElevation(12f);
         dock.addView(dockItem("Apps", "▦", this::showDrawer));
         dock.addView(dockItem("Controls", "☷", this::showControlCentre));
         dock.addView(dockItem("Wallpaper", "◈", this::chooseWallpaper));
@@ -200,7 +211,8 @@ public class MainActivity extends Activity {
         icon.setGravity(Gravity.CENTER);
         GradientDrawable iconBg = new GradientDrawable(GradientDrawable.Orientation.TL_BR,
             new int[]{0xFF27649B, 0xFF102D50});
-        iconBg.setCornerRadius(22);
+        iconBg.setCornerRadius(20);
+        iconBg.setAlpha(238);
         iconBg.setStroke(1, 0x667DBEFF);
         icon.setBackground(iconBg);
         tile.addView(icon, new LinearLayout.LayoutParams(62, 62));
@@ -517,6 +529,8 @@ public class MainActivity extends Activity {
         root.addView(button("Dynamic Island overlay permission", this::requestIslandOverlay));
         root.addView(button("Notification access", () -> openSettings(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)));
         root.addView(button("Choose home wallpaper", this::chooseWallpaper));
+        root.addView(button("Open Control Centre", this::showControlCentre));
+        root.addView(button("Open App Library", this::showDrawer));
         root.addView(button("Android home app settings", () -> openSettings(Settings.ACTION_HOME_SETTINGS)));
         root.addView(text("Android keeps secure unlock, protected quick settings and system notifications under its own control.", 13, 0xFFD8E8FA, false));
         root.addView(button("BACK TO HOME", this::showHome));
@@ -536,13 +550,13 @@ public class MainActivity extends Activity {
         search.setHintTextColor(0xFF9CB6D2);
         search.setHint("Search apps");
         search.setPadding(18, 8, 18, 8);
-        search.setBackground(gradient(0x667DBEFF));
+        search.setBackground(glassSurface(0x667DBEFF, 24));
         LinearLayout.LayoutParams sp = new LinearLayout.LayoutParams(-1, 52);
         sp.topMargin = 12;
         root.addView(search, sp);
         ScrollView scroll = new ScrollView(this);
         GridLayout grid = new GridLayout(this);
-        grid.setColumnCount(3);
+        grid.setColumnCount(4);
         scroll.addView(grid);
         populateAppGrid(grid, "");
         search.addTextChangedListener(new TextWatcher() {
@@ -597,6 +611,10 @@ public class MainActivity extends Activity {
             catch (Exception e) { showDrawer(); }
         } else if ("settings".equals(key)) openSettings(Settings.ACTION_SETTINGS);
         else if ("calendar".equals(key)) openFirstApp("calendar");
+        else if ("browser".equals(key)) {
+            try { startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse("https://www.google.com"))); }
+            catch (Exception e) { showDrawer(); }
+        }
         else if ("photos".equals(key)) openFirstApp("gallery");
     }
 
