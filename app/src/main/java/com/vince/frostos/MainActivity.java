@@ -157,8 +157,13 @@ public class MainActivity extends Activity {
         String[] actions = {"phone", "sms", "camera", "photos", "settings", "calendar"};
         for (int i = 0; i < labels.length; i++) {
             final String action = actions[i];
-            grid.addView(appTile(glyphs[i], labels[i], () -> launchShortcut(action)),
-                new GridLayout.LayoutParams());
+            View tile = appTile(glyphs[i], labels[i], () -> launchShortcut(action));
+            GridLayout.LayoutParams tileParams = new GridLayout.LayoutParams();
+            tileParams.width = 0;
+            tileParams.height = -2;
+            tileParams.columnSpec = GridLayout.spec(GridLayout.UNDEFINED, 1f);
+            tileParams.setMargins(2, 2, 2, 2);
+            grid.addView(tile, tileParams);
         }
         LinearLayout.LayoutParams gp = new LinearLayout.LayoutParams(-1, -2);
         gp.topMargin = 8;
@@ -202,12 +207,6 @@ public class MainActivity extends Activity {
         np.topMargin = 6;
         tile.addView(name, np);
         tile.setOnClickListener(v -> action.run());
-        GridLayout.LayoutParams gp = new GridLayout.LayoutParams();
-        gp.width = 0;
-        gp.height = -2;
-        gp.columnSpec = GridLayout.spec(GridLayout.UNDEFINED, 1f);
-        gp.setMargins(2, 2, 2, 2);
-        tile.setLayoutParams(gp);
         return tile;
     }
 
@@ -494,27 +493,56 @@ public class MainActivity extends Activity {
     private void showDrawer() {
         base("APP LIBRARY");
         root.addView(text("Your applications", 26, white, true));
+        EditText search = new EditText(this);
+        search.setSingleLine(true);
+        search.setTextColor(white);
+        search.setHintTextColor(0xFF9CB6D2);
+        search.setHint("Search apps");
+        search.setPadding(18, 8, 18, 8);
+        search.setBackground(gradient(0x667DBEFF));
+        LinearLayout.LayoutParams sp = new LinearLayout.LayoutParams(-1, 52);
+        sp.topMargin = 12;
+        root.addView(search, sp);
         ScrollView scroll = new ScrollView(this);
         GridLayout grid = new GridLayout(this);
-        grid.setColumnCount(2);
+        grid.setColumnCount(3);
         scroll.addView(grid);
+        populateAppGrid(grid, "");
+        search.addTextChangedListener(new TextWatcher() {
+            @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
+            @Override public void onTextChanged(CharSequence s, int start, int before, int count) {
+                populateAppGrid(grid, s.toString());
+            }
+            @Override public void afterTextChanged(Editable e) {}
+        });
+        root.addView(scroll, new LinearLayout.LayoutParams(-1, 0, 1f));
+        root.addView(button("BACK TO HOME", this::showHome));
+    }
+
+    private void populateAppGrid(GridLayout grid, String filter) {
+        grid.removeAllViews();
         PackageManager pm = getPackageManager();
         Intent query = new Intent(Intent.ACTION_MAIN, null);
         query.addCategory(Intent.CATEGORY_LAUNCHER);
         List<android.content.pm.ResolveInfo> apps = pm.queryIntentActivities(query, 0);
         Collections.sort(apps, (a, b) -> String.valueOf(a.loadLabel(pm)).compareToIgnoreCase(String.valueOf(b.loadLabel(pm))));
+        String needle = filter == null ? "" : filter.trim().toLowerCase(Locale.ROOT);
         for (android.content.pm.ResolveInfo info : apps) {
             String label = String.valueOf(info.loadLabel(pm));
+            if (!label.toLowerCase(Locale.ROOT).contains(needle)) continue;
             String pkg = info.activityInfo.packageName;
-            Button tile = button(label, () -> launchPackage(pkg));
+            View tile = appTile("◉", label, () -> launchPackage(pkg));
             GridLayout.LayoutParams p = new GridLayout.LayoutParams();
-            p.width = 0; p.height = 76;
+            p.width = 0;
+            p.height = -2;
             p.columnSpec = GridLayout.spec(GridLayout.UNDEFINED, 1f);
-            p.setMargins(5, 5, 5, 5);
+            p.setMargins(2, 2, 2, 2);
             grid.addView(tile, p);
         }
-        root.addView(scroll, new LinearLayout.LayoutParams(-1, 0, 1f));
-        root.addView(button("BACK TO HOME", this::showHome));
+        if (grid.getChildCount() == 0) {
+            TextView empty = text("No apps found", 14, 0xFFD8E8FA, false);
+            grid.addView(empty);
+        }
     }
 
     private void launchPackage(String pkg) {
