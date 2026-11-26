@@ -65,7 +65,8 @@ public class MainActivity extends Activity {
         getWindow().setNavigationBarColor(bg);
         getWindow().getDecorView().setSystemUiVisibility(
             View.SYSTEM_UI_FLAG_LAYOUT_STABLE | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN);
-        wallpaperUri = getPreferences(MODE_PRIVATE).getString("wallpaper_uri", null);\n        blue = getPreferences(MODE_PRIVATE).getInt("accent_color", Color.rgb(113, 194, 255));
+        wallpaperUri = getPreferences(MODE_PRIVATE).getString("wallpaper_uri", null);
+        blue = getPreferences(MODE_PRIVATE).getInt("accent_color", Color.rgb(113, 194, 255));
         showHome();
         handler.post(clockTick);
     }
