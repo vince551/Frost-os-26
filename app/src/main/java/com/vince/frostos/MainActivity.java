@@ -54,6 +54,7 @@ public class MainActivity extends Activity {
         @Override public void run() {
             updateClock(1001, 1002);
             updateClock(2001, 2002);
+            updateClock(3001, 3002);
             handler.postDelayed(this, 1000);
         }
     };
@@ -124,6 +125,8 @@ public class MainActivity extends Activity {
         root.setBackground(new GradientDrawable(GradientDrawable.Orientation.TL_BR,
             new int[]{Color.rgb(11, 39, 72), bg, Color.rgb(3, 8, 19)}));
         setContentView(root);
+        root.setAlpha(0f);
+        root.animate().alpha(1f).setDuration(220).start();
         root.addView(text("FROST  •  OS 26", 13, blue, true));
         root.addView(text(subtitle, 12, 0xFFB7CDE6, false));
     }
@@ -687,7 +690,9 @@ public class MainActivity extends Activity {
         clockCard.setPadding(20, 20, 20, 20);
         clockCard.setBackground(glassSurface(0x997DBEFF, 30));
         TextView time = text(new SimpleDateFormat("h:mm", Locale.getDefault()).format(new Date()), 54, white, true);
+        time.setId(3001);
         TextView date = text(new SimpleDateFormat("EEEE, d MMMM", Locale.getDefault()).format(new Date()), 14, 0xFFD8E8FA, false);
+        date.setId(3002);
         clockCard.addView(time);
         clockCard.addView(date);
         LinearLayout.LayoutParams cp = new LinearLayout.LayoutParams(-1, -2);
