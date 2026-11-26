@@ -1,4 +1,4 @@
-name: Android Debug APK
+name: FROST OS 26 Complete Edition
 
 on:
   push:
@@ -23,11 +23,15 @@ jobs:
         with:
           gradle-version: "8.9"
 
-      - name: Build debug APK
-        run: gradle assembleDebug
+      - name: Build APK
+        run: |
+          gradle assembleDebug
+          mkdir -p release
+          cp app/build/outputs/apk/debug/app-debug.apk release/FROST-OS-26-Complete.apk
 
-      - name: Upload APK
+      - name: Upload Complete Edition APK
         uses: actions/upload-artifact@v4
         with:
-          name: FROST-OS-26-debug
-          path: app/build/outputs/apk/debug/app-debug.apk
+          name: FROST-OS-26-Complete
+          path: release/FROST-OS-26-Complete.apk
+          if-no-files-found: error
