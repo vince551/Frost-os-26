@@ -137,22 +137,21 @@ public class MainActivity extends Activity {
         gp.topMargin = 28;
         root.addView(grid, gp);
         root.addView(button("APP LIBRARY", this::showDrawer));
-        root.setOnTouchListener((v, e) -> handleGesture(e));
     }
 
-    private boolean handleGesture(MotionEvent e) {
-        if (e.getAction() == MotionEvent.ACTION_DOWN) {
-            downX = e.getX(); downY = e.getY(); gestureHandled = false; return true;
-        }
-        if (e.getAction() == MotionEvent.ACTION_UP && !gestureHandled) {
-            float dx = e.getX() - downX, dy = e.getY() - downY;
-            if (Math.abs(dy) > 75 && Math.abs(dy) > Math.abs(dx)) {
-                gestureHandled = true;
+    @Override public boolean dispatchTouchEvent(MotionEvent event) {
+        if (event.getAction() == MotionEvent.ACTION_DOWN) {
+            downX = event.getX();
+            downY = event.getY();
+        } else if (event.getAction() == MotionEvent.ACTION_UP) {
+            float dx = event.getX() - downX;
+            float dy = event.getY() - downY;
+            if (Math.abs(dy) > 90 && Math.abs(dy) > Math.abs(dx) * 1.25f) {
                 if (dy < 0) showDrawer(); else showControlCentre();
                 return true;
             }
         }
-        return true;
+        return super.dispatchTouchEvent(event);
     }
 
     private void showControlCentre() {
@@ -165,7 +164,6 @@ public class MainActivity extends Activity {
         root.addView(button("Airplane mode settings", () -> openSettings(Settings.ACTION_AIRPLANE_MODE_SETTINGS)));
         root.addView(button("All Android settings", () -> openSettings(Settings.ACTION_SETTINGS)));
         root.addView(button("BACK TO FROST HOME", this::showHome));
-        root.setOnTouchListener((v, e) -> handleGesture(e));
     }
 
     private void openSettings(String action) {
@@ -197,7 +195,6 @@ public class MainActivity extends Activity {
         }
         root.addView(scroll, new LinearLayout.LayoutParams(-1, 0, 1f));
         root.addView(button("BACK TO HOME", this::showHome));
-        root.setOnTouchListener((v, e) -> handleGesture(e));
     }
 
     private void launchPackage(String pkg) {
@@ -207,7 +204,10 @@ public class MainActivity extends Activity {
 
     private void launchShortcut(String key) {
         if ("phone".equals(key)) openSettings(Intent.ACTION_DIAL);
-        else if ("sms".equals(key)) openSettings(Intent.ACTION_SENDTO);
+        else if ("sms".equals(key)) {
+            try { startActivity(new Intent(Intent.ACTION_SENDTO, Uri.parse("smsto:"))); }
+            catch (Exception e) { showDrawer(); }
+        }
         else if ("camera".equals(key)) {
             try { startActivity(new Intent("android.media.action.IMAGE_CAPTURE")); }
             catch (Exception e) { showDrawer(); }
