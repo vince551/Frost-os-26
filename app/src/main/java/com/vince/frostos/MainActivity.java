@@ -142,6 +142,8 @@ public class MainActivity extends Activity {
         gp.topMargin = 18;
         root.addView(grid, gp);
         root.addView(button("APP LIBRARY", this::showDrawer));
+        root.addView(button("CONTROL CENTRE", this::showControlCentre));
+        root.addView(button("FROST SETTINGS", this::showFrostSettings));
         root.addView(button("PREVIEW LOCK SCREEN", this::showLockScreen));
     }
 
@@ -277,8 +279,37 @@ public class MainActivity extends Activity {
         root.addView(button("Display & brightness", () -> openSettings(Settings.ACTION_DISPLAY_SETTINGS)));
         root.addView(button("Sound & volume", () -> openSettings(Settings.ACTION_SOUND_SETTINGS)));
         root.addView(button("Airplane mode settings", () -> openSettings(Settings.ACTION_AIRPLANE_MODE_SETTINGS)));
+        root.addView(button("Enable Dynamic Island overlay", this::requestIslandOverlay));
+        root.addView(button("Enable notification access", () -> openSettings(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)));
+        root.addView(text("Dynamic Island overlay: " + (Settings.canDrawOverlays(this) ? "Enabled" : "Permission needed"), 12, blue, false));
+        root.addView(button("FROST Settings", this::showFrostSettings));
         root.addView(button("All Android settings", () -> openSettings(Settings.ACTION_SETTINGS)));
         root.addView(button("BACK TO FROST HOME", this::showHome));
+    }
+
+    private void requestIslandOverlay() {
+        if (Settings.canDrawOverlays(this)) {
+            showMessage("Dynamic Island overlay permission is already enabled.");
+            return;
+        }
+        try {
+            Intent intent = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                Uri.parse("package:" + getPackageName()));
+            startActivity(intent);
+        } catch (Exception e) {
+            openSettings(Settings.ACTION_SETTINGS);
+        }
+    }
+
+    private void showFrostSettings() {
+        base("PERSONALISE YOUR EXPERIENCE");
+        root.addView(text("FROST Settings", 28, white, true));
+        root.addView(text("System permissions", 14, blue, true));
+        root.addView(button("Dynamic Island overlay permission", this::requestIslandOverlay));
+        root.addView(button("Notification access", () -> openSettings(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)));
+        root.addView(button("Android home app settings", () -> openSettings(Settings.ACTION_HOME_SETTINGS)));
+        root.addView(text("Android keeps secure unlock, protected quick settings and system notifications under its own control.", 13, 0xFFD8E8FA, false));
+        root.addView(button("BACK TO HOME", this::showHome));
     }
 
     private void openSettings(String action) {
