@@ -73,12 +73,29 @@ public class FrostNotificationListener extends NotificationListenerService {
         if (title == null && body == null) return;
         String heading = title == null ? sbn.getPackageName() : title.toString();
         String detail = body == null ? "New notification" : body.toString();
+        saveNotification(heading, detail, sbn.getPackageName());
         PendingIntent intent = n.contentIntent;
         handler.post(() -> showNotificationIsland(heading, detail, intent));
     }
 
     @Override public void onNotificationRemoved(StatusBarNotification sbn) {
         handler.post(this::findActiveMediaSession);
+    }
+
+    private void saveNotification(String title, String body, String packageName) {
+        try {
+            android.content.SharedPreferences prefs = getSharedPreferences("frost_notifications", MODE_PRIVATE);
+            org.json.JSONArray old = new org.json.JSONArray(prefs.getString("history", "[]"));
+            org.json.JSONArray next = new org.json.JSONArray();
+            org.json.JSONObject item = new org.json.JSONObject();
+            item.put("title", title);
+            item.put("body", body);
+            item.put("package", packageName);
+            item.put("time", System.currentTimeMillis());
+            next.put(item);
+            for (int i = 0; i < old.length() && next.length() < 12; i++) next.put(old.getJSONObject(i));
+            prefs.edit().putString("history", next.toString()).apply();
+        } catch (Exception ignored) {}
     }
 
     private void findActiveMediaSession() {
