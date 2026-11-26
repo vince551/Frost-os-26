@@ -46,7 +46,7 @@ public class FrostNotificationListener extends NotificationListenerService {
             pill.setText(title + "\n" + detail);
             pill.setTextColor(Color.WHITE);
             pill.setTextSize(12);
-            pill.setTypeface(Typeface.DEFAULT, Typeface.MEDIUM);
+            pill.setTypeface(Typeface.create("sans-serif-medium", Typeface.NORMAL));
             pill.setMaxLines(2);
             pill.setPadding(24, 15, 24, 15);
             GradientDrawable shape = new GradientDrawable();
