@@ -45,6 +45,7 @@ public class MainActivity extends Activity {
     private String torchCameraId;
     private static final int PICK_WALLPAPER = 77;
     private String wallpaperUri;
+    private String activeCategory = "";
     private final int bg = Color.rgb(7, 19, 38);
     private final int blue = Color.rgb(113, 194, 255);
     private final int white = Color.WHITE;
@@ -137,6 +138,8 @@ public class MainActivity extends Activity {
         top.setGravity(Gravity.CENTER_VERTICAL);
         TextView brand = text("FROST", 19, white, true);
         top.addView(brand, new LinearLayout.LayoutParams(0, -2, 1f));
+        top.addView(button("▦", this::showWidgets));
+        top.addView(button("▣", this::showAppSwitcher));
         top.addView(button("⚙", this::showFrostSettings));
         root.addView(top);
 
@@ -200,6 +203,14 @@ public class MainActivity extends Activity {
         LinearLayout.LayoutParams dp = new LinearLayout.LayoutParams(-1, -2);
         dp.topMargin = 18;
         root.addView(dock, dp);
+
+        LinearLayout quick = new LinearLayout(this);
+        quick.setGravity(Gravity.CENTER);
+        quick.addView(button("Widgets", this::showWidgets), new LinearLayout.LayoutParams(0, 48, 1f));
+        quick.addView(button("App Switcher", this::showAppSwitcher), new LinearLayout.LayoutParams(0, 48, 1f));
+        LinearLayout.LayoutParams qp = new LinearLayout.LayoutParams(-1, -2);
+        qp.topMargin = 8;
+        root.addView(quick, qp);
     }
 
     private View appTile(String glyph, String label, Runnable action) {
@@ -586,7 +597,138 @@ public class MainActivity extends Activity {
             @Override public void afterTextChanged(Editable e) {}
         });
         root.addView(scroll, new LinearLayout.LayoutParams(-1, 0, 1f));
+        LinearLayout folders = new LinearLayout(this);
+        folders.setOrientation(LinearLayout.VERTICAL);
+        folders.addView(text("APP FOLDERS", 11, blue, true));
+        LinearLayout folderRow = new LinearLayout(this);
+        folderRow.setGravity(Gravity.CENTER);
+        String[] folderNames = {"Social", "Media", "Tools", "Work"};
+        for (String folder : folderNames) {
+            Button chip = button(folder, () -> {
+                activeCategory = folder;
+                populateAppGrid(grid, search.getText().toString());
+            });
+            folderRow.addView(chip, new LinearLayout.LayoutParams(0, 46, 1f));
+        }
+        folders.addView(folderRow);
+        LinearLayout.LayoutParams fp = new LinearLayout.LayoutParams(-1, -2);
+        fp.topMargin = 8;
+        root.addView(folders, 0, fp);
+        root.addView(button("Show all apps", () -> {
+            activeCategory = "";
+            populateAppGrid(grid, search.getText().toString());
+        }));
         root.addView(button("BACK TO HOME", this::showHome));
+    }
+
+    private boolean matchesCategory(String label) {
+        String name = label.toLowerCase(Locale.ROOT);
+        if ("Social".equals(activeCategory))
+            return containsAny(name, "whatsapp", "facebook", "instagram", "messenger", "telegram", "tiktok", "snapchat", "x ");
+        if ("Media".equals(activeCategory))
+            return containsAny(name, "camera", "photo", "gallery", "music", "youtube", "video", "netflix", "spotify");
+        if ("Tools".equals(activeCategory))
+            return containsAny(name, "settings", "file", "clock", "calculator", "calendar", "phone", "browser");
+        if ("Work".equals(activeCategory))
+            return containsAny(name, "drive", "docs", "sheets", "office", "gmail", "meet", "classroom", "teams");
+        return true;
+    }
+
+    private boolean containsAny(String value, String... terms) {
+        for (String term : terms) if (value.contains(term)) return true;
+        return false;
+    }
+
+    private void showWidgets() {
+        base("WIDGETS");
+        root.addView(text("Your day at a glance", 27, white, true));
+        LinearLayout clockCard = new LinearLayout(this);
+        clockCard.setOrientation(LinearLayout.VERTICAL);
+        clockCard.setGravity(Gravity.CENTER);
+        clockCard.setPadding(20, 20, 20, 20);
+        clockCard.setBackground(glassSurface(0x997DBEFF, 30));
+        TextView time = text(new SimpleDateFormat("h:mm", Locale.getDefault()).format(new Date()), 54, white, true);
+        TextView date = text(new SimpleDateFormat("EEEE, d MMMM", Locale.getDefault()).format(new Date()), 14, 0xFFD8E8FA, false);
+        clockCard.addView(time);
+        clockCard.addView(date);
+        LinearLayout.LayoutParams cp = new LinearLayout.LayoutParams(-1, -2);
+        cp.topMargin = 16;
+        root.addView(clockCard, cp);
+
+        Intent battery = registerReceiver(null, new android.content.IntentFilter(Intent.ACTION_BATTERY_CHANGED));
+        int level = battery == null ? -1 : battery.getIntExtra(android.os.BatteryManager.EXTRA_LEVEL, -1);
+        int scale = battery == null ? 100 : battery.getIntExtra(android.os.BatteryManager.EXTRA_SCALE, 100);
+        int percent = level < 0 ? -1 : Math.round(level * 100f / Math.max(1, scale));
+        LinearLayout batteryCard = widgetCard("BATTERY", percent < 0 ? "Battery status unavailable" : percent + "% remaining");
+        root.addView(batteryCard);
+
+        LinearLayout calendarCard = widgetCard("CALENDAR", "Open your calendar to view today's events and upcoming plans.");
+        root.addView(calendarCard);
+        root.addView(button("Open Calendar", () -> launchShortcut("calendar")));
+        root.addView(button("Open Weather", () -> {
+            try { startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse("https://weather.google.com/"))); }
+            catch (Exception e) { showMessage("No browser is available to open weather."); }
+        }));
+        root.addView(button("BACK TO HOME", this::showHome));
+    }
+
+    private LinearLayout widgetCard(String heading, String detail) {
+        LinearLayout card = new LinearLayout(this);
+        card.setOrientation(LinearLayout.VERTICAL);
+        card.setPadding(18, 16, 18, 16);
+        card.setBackground(glassSurface(0x667DBEFF, 24));
+        TextView title = text(heading, 11, blue, true);
+        TextView value = text(detail, 15, white, false);
+        LinearLayout.LayoutParams vp = new LinearLayout.LayoutParams(-1, -2);
+        vp.topMargin = 6;
+        card.addView(title);
+        card.addView(value, vp);
+        LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(-1, -2);
+        p.topMargin = 10;
+        card.setLayoutParams(p);
+        return card;
+    }
+
+    private void showAppSwitcher() {
+        base("APP SWITCHER");
+        root.addView(text("Recently opened apps", 26, white, true));
+        android.content.SharedPreferences prefs = getPreferences(MODE_PRIVATE);
+        String saved = prefs.getString("recent_apps", "");
+        if (saved.trim().isEmpty()) {
+            root.addView(text("Apps you open from FROST will appear here.", 14, 0xFFD8E8FA, false));
+        } else {
+            for (String pkg : saved.split("\\|")) {
+                if (pkg.trim().isEmpty()) continue;
+                try {
+                    android.content.pm.ApplicationInfo info = getPackageManager().getApplicationInfo(pkg, 0);
+                    String label = String.valueOf(getPackageManager().getApplicationLabel(info));
+                    View tile = appTileWithIcon(getPackageManager().getApplicationIcon(info), label,
+                        () -> launchPackage(pkg));
+                    root.addView(tile);
+                } catch (Exception ignored) {}
+            }
+        }
+        root.addView(button("Clear recent apps", () -> {
+            prefs.edit().remove("recent_apps").apply();
+            showAppSwitcher();
+        }));
+        root.addView(button("BACK TO HOME", this::showHome));
+    }
+
+    private void recordRecent(String pkg) {
+        android.content.SharedPreferences prefs = getPreferences(MODE_PRIVATE);
+        String old = prefs.getString("recent_apps", "");
+        java.util.LinkedHashSet<String> items = new java.util.LinkedHashSet<>();
+        items.add(pkg);
+        if (!old.isEmpty()) for (String item : old.split("\\|")) if (!item.equals(pkg) && !item.isEmpty()) items.add(item);
+        StringBuilder result = new StringBuilder();
+        int count = 0;
+        for (String item : items) {
+            if (count++ >= 8) break;
+            if (result.length() > 0) result.append("|");
+            result.append(item);
+        }
+        prefs.edit().putString("recent_apps", result.toString()).apply();
     }
 
     private void populateAppGrid(GridLayout grid, String filter) {
@@ -599,7 +741,7 @@ public class MainActivity extends Activity {
         String needle = filter == null ? "" : filter.trim().toLowerCase(Locale.ROOT);
         for (android.content.pm.ResolveInfo info : apps) {
             String label = String.valueOf(info.loadLabel(pm));
-            if (!label.toLowerCase(Locale.ROOT).contains(needle)) continue;
+            if (!label.toLowerCase(Locale.ROOT).contains(needle) || !matchesCategory(label)) continue;
             String pkg = info.activityInfo.packageName;
             View tile = appTileWithIcon(info.loadIcon(pm), label, () -> launchPackage(pkg));
             GridLayout.LayoutParams p = new GridLayout.LayoutParams();
@@ -616,6 +758,7 @@ public class MainActivity extends Activity {
     }
 
     private void launchPackage(String pkg) {
+        recordRecent(pkg);
         Intent launch = getPackageManager().getLaunchIntentForPackage(pkg);
         if (launch != null) startActivity(launch);
     }
