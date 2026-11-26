@@ -200,10 +200,10 @@ public class MainActivity extends Activity {
         dock.setPadding(6, 8, 6, 8);
         dock.setBackground(glassSurface(0x887DBEFF, 30));
         dock.setElevation(12f);
-        dock.addView(dockItem("Phone", "☎", () -> launchShortcut("phone")));
-        dock.addView(dockItem("Browser", "◎", () -> launchShortcut("browser")));
-        dock.addView(dockItem("Messages", "✉", () -> launchShortcut("sms")));
-        dock.addView(dockItem("Camera", "◉", () -> launchShortcut("camera")));
+        dock.addView(dockItemForSlot(0, "Phone", "☎", "phone"));
+        dock.addView(dockItemForSlot(1, "Browser", "◎", "browser"));
+        dock.addView(dockItemForSlot(2, "Messages", "✉", "sms"));
+        dock.addView(dockItemForSlot(3, "Camera", "◉", "camera"));
         LinearLayout.LayoutParams dp = new LinearLayout.LayoutParams(-1, -2);
         dp.topMargin = 18;
         root.addView(dock, dp);
@@ -277,6 +277,68 @@ public class MainActivity extends Activity {
         tile.addView(name, np);
         tile.setOnClickListener(v -> action.run());
         return tile;
+    }
+
+
+    private View dockItemForSlot(int slot, String defaultLabel, String glyph, String defaultAction) {
+        String pkg = getPreferences(MODE_PRIVATE).getString("dock_" + slot, "");
+        if (pkg != null && !pkg.isEmpty()) {
+            try {
+                getPackageManager().getApplicationInfo(pkg, 0);
+                String label = String.valueOf(getPackageManager().getApplicationLabel(
+                    getPackageManager().getApplicationInfo(pkg, 0)));
+                Drawable drawable = getPackageManager().getApplicationIcon(pkg);
+                LinearLayout item = new LinearLayout(this);
+                item.setOrientation(LinearLayout.VERTICAL);
+                item.setGravity(Gravity.CENTER);
+                ImageView icon = new ImageView(this);
+                icon.setImageDrawable(drawable);
+                icon.setScaleType(ImageView.ScaleType.FIT_CENTER);
+                item.addView(icon, new LinearLayout.LayoutParams(34, 34));
+                TextView caption = text(label, 9, 0xFFD8E8FA, false);
+                caption.setGravity(Gravity.CENTER);
+                caption.setMaxLines(1);
+                item.addView(caption);
+                item.setOnClickListener(v -> launchPackage(pkg));
+                item.setLayoutParams(new LinearLayout.LayoutParams(0, -2, 1f));
+                return item;
+            } catch (Exception ignored) {
+                getPreferences(MODE_PRIVATE).edit().remove("dock_" + slot).apply();
+            }
+        }
+        return dockItem(defaultLabel, glyph, () -> launchShortcut(defaultAction));
+    }
+
+    private void showDockCustomizer() {
+        Intent query = new Intent(Intent.ACTION_MAIN);
+        query.addCategory(Intent.CATEGORY_LAUNCHER);
+        List<android.content.pm.ResolveInfo> apps = getPackageManager().queryIntentActivities(query, 0);
+        Collections.sort(apps, (a, b) -> String.valueOf(a.loadLabel(getPackageManager()))
+            .compareToIgnoreCase(String.valueOf(b.loadLabel(getPackageManager()))));
+        String[] labels = new String[apps.size()];
+        for (int i = 0; i < apps.size(); i++) labels[i] = String.valueOf(apps.get(i).loadLabel(getPackageManager()));
+        if (apps.isEmpty()) { showMessage("No launchable apps were found."); return; }
+        String[] slots = {"Phone", "Browser", "Messages", "Camera"};
+        showDockSlotDialog(0, slots, labels, apps);
+    }
+
+    private void showDockSlotDialog(int slot, String[] slots, String[] labels,
+            List<android.content.pm.ResolveInfo> apps) {
+        if (slot >= 4) { showFrostSettings(); return; }
+        final int index = slot;
+        new android.app.AlertDialog.Builder(this)
+            .setTitle("Dock position " + (slot + 1) + " • " + slots[slot])
+            .setItems(labels, (dialog, which) -> {
+                getPreferences(MODE_PRIVATE).edit()
+                    .putString("dock_" + index, apps.get(which).activityInfo.packageName).apply();
+                showDockSlotDialog(index + 1, slots, labels, apps);
+            })
+            .setNeutralButton("Use default", (dialog, which) -> {
+                getPreferences(MODE_PRIVATE).edit().remove("dock_" + index).apply();
+                showDockSlotDialog(index + 1, slots, labels, apps);
+            })
+            .setNegativeButton("Finish", (dialog, which) -> showFrostSettings())
+            .show();
     }
 
     private View dockItem(String label, String glyph, Runnable action) {
@@ -585,6 +647,7 @@ public class MainActivity extends Activity {
         root.addView(button("4. Set FROST as default home app", () -> openSettings(Settings.ACTION_HOME_SETTINGS)));
         root.addView(text("PERSONALISATION", 12, blue, true));
         root.addView(button("Choose home wallpaper", this::chooseWallpaper));
+        root.addView(button("Customise four-app dock", this::showDockCustomizer));
         root.addView(button("Open Control Centre", this::showControlCentre));
         root.addView(button("Open App Library", this::showDrawer));
         root.addView(text("Android retains control of secure unlock, protected quick settings and the system notification shade. FROST provides its own launcher experience and companion surfaces.", 12, 0xFFD8E8FA, false));
