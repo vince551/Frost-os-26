@@ -173,19 +173,7 @@ public class MainActivity extends Activity {
 
         GridLayout grid = new GridLayout(this);
         grid.setColumnCount(4);
-        String[] labels = {"Phone", "Messages", "Camera", "Photos", "Settings", "Calendar"};
-        String[] glyphs = {"☎", "✉", "◉", "▧", "⚙", "▦"};
-        String[] actions = {"phone", "sms", "camera", "photos", "settings", "calendar"};
-        for (int i = 0; i < labels.length; i++) {
-            final String action = actions[i];
-            View tile = appTileForShortcut(glyphs[i], labels[i], action);
-            GridLayout.LayoutParams tileParams = new GridLayout.LayoutParams();
-            tileParams.width = 0;
-            tileParams.height = -2;
-            tileParams.columnSpec = GridLayout.spec(GridLayout.UNDEFINED, 1f);
-            tileParams.setMargins(2, 2, 2, 2);
-            grid.addView(tile, tileParams);
-        }
+        populateHomeFavorites(grid);
         LinearLayout.LayoutParams gp = new LinearLayout.LayoutParams(-1, -2);
         gp.topMargin = 8;
         root.addView(grid, gp);
@@ -280,6 +268,79 @@ public class MainActivity extends Activity {
         return tile;
     }
 
+
+
+    private void populateHomeFavorites(GridLayout grid) {
+        String saved = getPreferences(MODE_PRIVATE).getString("home_favourites", "");
+        if (saved == null || saved.trim().isEmpty()) {
+            String[] labels = {"Phone", "Messages", "Camera", "Photos", "Settings", "Calendar"};
+            String[] glyphs = {"☎", "✉", "◉", "▧", "⚙", "▦"};
+            String[] actions = {"phone", "sms", "camera", "photos", "settings", "calendar"};
+            for (int i = 0; i < labels.length; i++) {
+                addFavouriteTile(grid, appTileForShortcut(glyphs[i], labels[i], actions[i]));
+            }
+            return;
+        }
+        PackageManager pm = getPackageManager();
+        for (String pkg : saved.split("\\|")) {
+            if (pkg.trim().isEmpty()) continue;
+            try {
+                String label = String.valueOf(pm.getApplicationLabel(pm.getApplicationInfo(pkg, 0)));
+                addFavouriteTile(grid, appTileWithIcon(pm.getApplicationIcon(pkg), label, () -> launchPackage(pkg)));
+            } catch (Exception ignored) {}
+        }
+    }
+
+    private void addFavouriteTile(GridLayout grid, View tile) {
+        GridLayout.LayoutParams params = new GridLayout.LayoutParams();
+        params.width = 0;
+        params.height = -2;
+        params.columnSpec = GridLayout.spec(GridLayout.UNDEFINED, 1f);
+        params.setMargins(2, 2, 2, 2);
+        grid.addView(tile, params);
+    }
+
+    private void showFavouriteCustomizer() {
+        Intent query = new Intent(Intent.ACTION_MAIN);
+        query.addCategory(Intent.CATEGORY_LAUNCHER);
+        List<android.content.pm.ResolveInfo> apps = getPackageManager().queryIntentActivities(query, 0);
+        Collections.sort(apps, (a, b) -> String.valueOf(a.loadLabel(getPackageManager()))
+            .compareToIgnoreCase(String.valueOf(b.loadLabel(getPackageManager()))));
+        if (apps.isEmpty()) { showMessage("No launchable apps were found."); return; }
+        String[] labels = new String[apps.size()];
+        boolean[] checked = new boolean[apps.size()];
+        String saved = getPreferences(MODE_PRIVATE).getString("home_favourites", "");
+        java.util.Set<String> selected = new java.util.HashSet<>();
+        if (saved != null && !saved.isEmpty()) {
+            Collections.addAll(selected, saved.split("\\|"));
+        }
+        for (int i = 0; i < apps.size(); i++) {
+            labels[i] = String.valueOf(apps.get(i).loadLabel(getPackageManager()));
+            checked[i] = selected.contains(apps.get(i).activityInfo.packageName);
+        }
+        new android.app.AlertDialog.Builder(this)
+            .setTitle("Choose up to 8 home favourites")
+            .setMultiChoiceItems(labels, checked, (dialog, which, isChecked) -> checked[which] = isChecked)
+            .setPositiveButton("Save favourites", (dialog, which) -> {
+                StringBuilder value = new StringBuilder();
+                int count = 0;
+                for (int i = 0; i < apps.size(); i++) {
+                    if (checked[i] && count < 8) {
+                        if (value.length() > 0) value.append("|");
+                        value.append(apps.get(i).activityInfo.packageName);
+                        count++;
+                    }
+                }
+                getPreferences(MODE_PRIVATE).edit().putString("home_favourites", value.toString()).apply();
+                showFrostSettings();
+            })
+            .setNeutralButton("Restore defaults", (dialog, which) -> {
+                getPreferences(MODE_PRIVATE).edit().remove("home_favourites").apply();
+                showFrostSettings();
+            })
+            .setNegativeButton("Cancel", null)
+            .show();
+    }
 
     private View dockItemForSlot(int slot, String defaultLabel, String glyph, String defaultAction) {
         String pkg = getPreferences(MODE_PRIVATE).getString("dock_" + slot, "");
@@ -649,6 +710,7 @@ public class MainActivity extends Activity {
         root.addView(text("PERSONALISATION", 12, blue, true));
         root.addView(button("Choose home wallpaper", this::chooseWallpaper));
         root.addView(button("Customise four-app dock", this::showDockCustomizer));
+        root.addView(button("Choose home favourites", this::showFavouriteCustomizer));
         root.addView(button("Open Control Centre", this::showControlCentre));
         root.addView(button("Open App Library", this::showDrawer));
         root.addView(text("Android retains control of secure unlock, protected quick settings and the system notification shade. FROST provides its own launcher experience and companion surfaces.", 12, 0xFFD8E8FA, false));
