@@ -9,6 +9,7 @@ import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
 import android.hardware.camera2.CameraManager;
 import android.net.Uri;
+import android.media.AudioManager;
 import android.os.Bundle;
 import android.os.Handler;
 import android.provider.Settings;
@@ -19,6 +20,7 @@ import android.widget.Button;
 import android.widget.GridLayout;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
+import android.widget.SeekBar;
 import android.widget.TextView;
 import java.text.SimpleDateFormat;
 import java.util.Collections;
@@ -274,6 +276,8 @@ public class MainActivity extends Activity {
     private void showControlCentre() {
         base("CONTROL CENTRE");
         root.addView(text("Quick access", 28, white, true));
+        addVolumeControl();
+        addBrightnessControl();
         root.addView(button("Wi-Fi settings", () -> openSettings(Settings.ACTION_WIFI_SETTINGS)));
         root.addView(button("Bluetooth settings", () -> openSettings(Settings.ACTION_BLUETOOTH_SETTINGS)));
         root.addView(button("Display & brightness", () -> openSettings(Settings.ACTION_DISPLAY_SETTINGS)));
@@ -285,6 +289,52 @@ public class MainActivity extends Activity {
         root.addView(button("FROST Settings", this::showFrostSettings));
         root.addView(button("All Android settings", () -> openSettings(Settings.ACTION_SETTINGS)));
         root.addView(button("BACK TO FROST HOME", this::showHome));
+    }
+
+    private void addVolumeControl() {
+        AudioManager audio = (AudioManager) getSystemService(AUDIO_SERVICE);
+        int max = audio.getStreamMaxVolume(AudioManager.STREAM_MUSIC);
+        int current = audio.getStreamVolume(AudioManager.STREAM_MUSIC);
+        root.addView(text("Media volume", 13, 0xFFD8E8FA, true));
+        SeekBar seek = new SeekBar(this);
+        seek.setMax(Math.max(1, max));
+        seek.setProgress(current);
+        seek.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            @Override public void onProgressChanged(SeekBar bar, int value, boolean fromUser) {
+                if (fromUser) audio.setStreamVolume(AudioManager.STREAM_MUSIC, value, 0);
+            }
+            @Override public void onStartTrackingTouch(SeekBar bar) {}
+            @Override public void onStopTrackingTouch(SeekBar bar) {}
+        });
+        root.addView(seek, new LinearLayout.LayoutParams(-1, 42));
+    }
+
+    private void addBrightnessControl() {
+        root.addView(text("Screen brightness", 13, 0xFFD8E8FA, true));
+        SeekBar seek = new SeekBar(this);
+        seek.setMax(255);
+        int current = 128;
+        try { current = Settings.System.getInt(getContentResolver(), Settings.System.SCREEN_BRIGHTNESS); }
+        catch (Exception ignored) {}
+        seek.setProgress(Math.max(1, current));
+        boolean allowed = Settings.System.canWrite(this);
+        seek.setEnabled(allowed);
+        seek.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            @Override public void onProgressChanged(SeekBar bar, int value, boolean fromUser) {
+                if (fromUser && Settings.System.canWrite(MainActivity.this)) {
+                    Settings.System.putInt(getContentResolver(), Settings.System.SCREEN_BRIGHTNESS, Math.max(1, value));
+                }
+            }
+            @Override public void onStartTrackingTouch(SeekBar bar) {}
+            @Override public void onStopTrackingTouch(SeekBar bar) {}
+        });
+        root.addView(seek, new LinearLayout.LayoutParams(-1, 42));
+        if (!allowed) root.addView(button("Allow brightness control", () -> {
+            try {
+                startActivity(new Intent(Settings.ACTION_MANAGE_WRITE_SETTINGS,
+                    Uri.parse("package:" + getPackageName())));
+            } catch (Exception e) { openSettings(Settings.ACTION_DISPLAY_SETTINGS); }
+        }));
     }
 
     private void requestIslandOverlay() {
